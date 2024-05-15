@@ -1,0 +1,20 @@
+{
+  "name": "invcamionapi",
+  "version": "1.0.0",
+  "description": "Una api para administrar un inventario de camiones",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "JD Garcia",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "fs": "^0.0.1-security",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.9.7",
+    "path": "^0.12.7"
+  }
+}
