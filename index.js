@@ -18,13 +18,13 @@ const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'),
 app.use(morgan('combined', { stream: accessLogStream }));
 
 const PORT = process.env.PORT || 8883;
-const DBName = process.env.DATABASE || 'camiones';
+const DBTabla = process.env.TABLA || 'camion';
 
 const dataDeBase = {
     host: process.env.HOST || 'localhost',
     user: process.env.USER || 'root',
     password: process.env.PASSWORD || '',
-    database: DBName,
+    database: process.env.DATABASE || 'camiones',
     port: process.env.DBPORT || 3306
 };
 
@@ -49,7 +49,7 @@ app.get('/hello', (req, res) => {
 
 app.get('/camiones/', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM nombre');
+        const [rows] = await pool.query(`SELECT * FROM ${DBTabla}`);
         if (rows.length === 0) {
             res.status(200).json({ mensaje: "La lista está vacía" });
         } else {
@@ -62,7 +62,7 @@ app.get('/camiones/', async (req, res) => {
 
 app.get('/camion/:id', async (req, res) => {
     try {
-        const [rows] = await pool.query(`SELECT * FROM ${DBName} WHERE id = ?`, [req.params.id]);
+        const [rows] = await pool.query(`SELECT * FROM ${DBTabla} WHERE id = ?`, [req.params.id]);
         if (rows.length === 0) {
             res.status(404).json({ mensaje: "Camion no encontrado" });
         } else {
@@ -82,7 +82,7 @@ app.post("/camion/", async (req, res) => {
     }
 
     try {
-        const sql = `INSERT INTO ${DBName} (color, matricula, conductor, yearOperative, marca, modelo, dimension, tipo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO ${DBTabla} (color, matricula, conductor, yearOperative, marca, modelo, dimension, tipo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
         const [result] = await pool.execute(sql, [color, matricula, conductor, operativo, marca, modelo, dimension, tipo]);
 
         if (result.affectedRows === 1) {
@@ -103,7 +103,7 @@ app.delete("/camion/:id", async (req, res) => {
             return;
         }
 
-        const [result] = await pool.execute(`DELETE FROM ${DBName} WHERE ID = ?`, [id]);
+        const [result] = await pool.execute(`DELETE FROM ${DBTabla} WHERE ID = ?`, [id]);
 
         if (result.affectedRows === 0) {
             res.json({ mensaje: "Registro no encontrado" });
@@ -141,7 +141,7 @@ app.put("/camion/:id", async (req, res) => {
             return;
         }
 
-        const sql = `UPDATE ${DBName} SET ${updates.join(', ')} WHERE id = ?`;
+        const sql = `UPDATE ${DBTabla} SET ${updates.join(', ')} WHERE id = ?`;
         values.push(id);
 
         const [result] = await pool.execute(sql, values);
@@ -174,7 +174,7 @@ app.patch("/camion/:id", async (req, res) => {
         }
 
         // Construct the UPDATE query
-        const sql = `UPDATE ${DBName} SET color = ?, matricula = ?, conductor = ?, yearOperative = ?, marca = ?, modelo = ?, dimension = ?, tipo = ? WHERE id = ?`;
+        const sql = `UPDATE ${DBTabla} SET color = ?, matricula = ?, conductor = ?, yearOperative = ?, marca = ?, modelo = ?, dimension = ?, tipo = ? WHERE id = ?`;
         const values = [color, matricula, conductor, yearOperative, marca, modelo, dimension, tipo, id];
 
         // Execute the UPDATE query
