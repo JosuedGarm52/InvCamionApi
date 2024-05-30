@@ -6,10 +6,13 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 const cors = require('cors');
 const helmet = require('helmet');
+const jwt = require('jsonwebtoken');
+const { log } = require('console');
 
 const app = express();
 
 // Middlewares
+app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
@@ -26,6 +29,49 @@ const dataDeBase = {
     password: process.env.PASSWORD || '',
     database: process.env.DATABASE || 'camiones',
     port: process.env.DBPORT || 3306
+};
+
+const {CUENTA, CONTRA, JWT_SECRET} = process.env
+
+const loginUser = async (req, res) => {
+    const { usuario, password } = req.body;
+
+    // Verificación de que los datos del cuerpo no sean nulos o vacíos
+    if (!usuario || !password) {
+        return res.status(400).json({ message: "Usuario y contraseña son requeridos" });
+    }
+
+    try {
+        if (usuario === CUENTA && password === CONTRA) {
+            const token = jwt.sign({ usuario }, JWT_SECRET, { expiresIn: '5m' });//duracion de token 5 minutos
+            res.json({ message: "Inicio de sesión exitoso", token: token});
+        } else {
+            res.status(404).json({ message: "Credenciales incorrectas" });
+        }
+    } catch (error) {
+        console.error("Error en el inicio de sesión:", error.message); 
+        res.status(500).json({ message: "Error en el servidor" }); 
+    }
+};
+
+// Método para verificar la validez de un token
+const verifyTokenValidity = async (token) => {
+    try {
+        let tokenx = ""
+        // Verificar si el token comienza con "Bearer "
+        if (token.startsWith("Bearer ")) {
+            // Extraer el token puro sin el prefijo "Bearer "
+            tokenx = token.slice(7);
+        }else{
+            console.log("tu token no es Bearer")
+        }
+
+        const decoded = await jwt.verify(tokenx, JWT_SECRET);
+        // El token es válido
+        return { isValid: true, usuario: decoded.usuario };
+    } catch (error) {// Si hay un error al verificar el token, significa que no es válido
+        return { isValid: false, error: "Token inválido: " + error.message };
+    }
 };
 
 const pool = mysql.createPool(dataDeBase);
@@ -45,6 +91,25 @@ app.get('/', (req, res) => {
  */
 app.get('/hello', (req, res) => {
     res.send('Hello World!');
+});
+
+app.post('/api/auth/login', loginUser);
+
+// Ruta para verificar la validez de un token
+app.post('/api/auth/verifyToken', async (req, res) => {
+    const token = req.headers['authorization'];
+
+    if (!token) {
+        return res.status(403).json({ message: "Token no proporcionado" });
+    }
+
+    const verificationResult = await verifyTokenValidity(token);
+
+    if (verificationResult.isValid) {
+        res.json({ message: "El token es válido", usuario: verificationResult.usuario });
+    } else {
+        res.status(401).json({ message: "El token no es válido", error: verificationResult.error });
+    }
 });
 
 app.get('/camiones/', async (req, res) => {
@@ -74,6 +139,15 @@ app.get('/camion/:id', async (req, res) => {
 });
 
 app.post("/camion/", async (req, res) => {
+    const token = req.headers['authorization'];
+
+    // Verificar la validez del token
+    const verificationResult = await verifyTokenValidity(token);
+
+    if (!verificationResult.isValid) {
+        return res.status(401).json({ message: "Token inválido", error: verificationResult.error });
+    }
+
     const { color, matricula, conductor, operativo, marca, modelo, dimension, tipo } = req.body;
 
     if (!color || !matricula || !conductor || !operativo || !marca || !modelo || !dimension || !tipo) {
